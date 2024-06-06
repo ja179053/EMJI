@@ -1,0 +1,230 @@
+﻿@page "/"
+@using Square
+@using Square.Authentication
+@using Square.Exceptions
+@using Classes
+@using Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Square.Models
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+
+
+<PageTitle>Home</PageTitle>
+<label>This is an app made by EMJI to facilitate your restaurant needs!!</label>
+<label>It connects with the square app to update you when an order is made, and also manages reservations!</label>
+<label>This can all be one app one day, but let's focus on the essentials!</label>
+<br />
+<label>Hi! You need to save your data in a database, create forms for reservations/orders, finish the floorplan, and implement drag and drop, and notifications!</label>
+<label>In short, set up SignalR for instant notifications. Create Forms for Reservations and Catalog Update. Fix Floorplan. Set table name in orders.</label>
+<label>Clients should be able to make a reservation from here!</label>
+<label>Staff should be able to see upcoming data here</label>
+<label>Admin should be able to see past data here analytics</label>
+
+<table class="table" title="Catalog">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (FoodItem foodItem in menu)
+        {
+            <tr>
+                <td>@foodItem.Name</td>
+                <td>@foodItem.Price</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+
+    async Task CreateOrder(SquareClient client)
+    {
+        var orderLineItemModifier = new OrderLineItemModifier.Builder()
+      .CatalogObjectId("{#coffee}")
+      .Quantity("1")
+      .Build();
+
+        var modifiers = new List<OrderLineItemModifier>();
+        modifiers.Add(orderLineItemModifier);
+
+        var orderLineItem = new OrderLineItem.Builder(quantity: "1")
+          .CatalogObjectId("{#small_coffee}")
+          .Modifiers(modifiers)
+          .Build();
+
+        var lineItems = new List<OrderLineItem>();
+        lineItems.Add(orderLineItem);
+        var order = new Square.Models.Order.Builder(locationId: "{L8FG93SZGWKKE}")
+        .State("OPEN")
+      .LineItems(lineItems)
+      .Build();
+
+        var body = new CreateOrderRequest.Builder()
+          .Order(order)
+          .IdempotencyKey("Test2")
+          .Build();
+        try
+        {
+            var result = await client.OrdersApi.CreateOrderAsync(body: body);
+        }
+        catch (ApiException e)
+        {
+            Console.WriteLine("Failed to make the request");
+            Console.WriteLine($"Response Code: {e.ResponseCode}");
+            Console.WriteLine($"Exception: {e.Message}");
+        }
+    }
+    async Task CreateItem(SquareClient client)
+    {
+        var priceMoney = new Money.Builder()
+      .Amount(300L)
+      .Currency("GBP")
+      .Build();
+        var itemVariationData = new CatalogItemVariation.Builder()
+      .ItemId("#coffee")
+      .Name("Small")
+      .PricingType("FIXED_PRICING")
+      .PriceMoney(priceMoney)
+      .Build();
+        var catalogObject = new CatalogObject.Builder(type: "ITEM_VARIATION", id: "#small_coffee")
+      .ItemVariationData(itemVariationData)
+      .Build();
+        var variations = new List<CatalogObject>();
+        variations.Add(catalogObject);
+
+        var itemData = new CatalogItem.Builder()
+      .Name("Coffee")
+      .Description("Coffee Drink")
+      .Abbreviation("Co")
+      .Variations(variations)
+      .Build();
+        var obj = new CatalogObject.Builder(type: "ITEM", id: "#coffee")
+    .ItemData(itemData)
+    .Build();
+        var body = new UpsertCatalogObjectRequest.Builder(idempotencyKey: "#TEST", mObject: obj).Build();
+        var result = await client.CatalogApi.UpsertCatalogObjectAsync(body: body);
+    }
+    async Task RetrieveitemList(SquareClient client)
+    {
+
+    }
+    List<FoodItem> menu = new List<FoodItem>();
+    protected override async Task OnInitializedAsync() {
+        SquareClient squareClient = LoadClient();
+        try
+        {
+            //After connecting square, tries to retrieve data
+            if (squareClient != null)
+            {
+                //Note that the sandbox and production versions have different items
+                var result2 = await squareClient.CatalogApi.ListCatalogAsync();
+                menu = new List<FoodItem>();
+                //Creates an object when none is found
+                if (result2.Objects.Count == 0)
+                {
+                    await CreateItem(squareClient);
+                    menu.Add(new FoodItem { Name = "Coffee", Price = 3 });
+                }
+                else
+                {
+                    foreach (var v in result2.Objects)
+                    {
+                        decimal d = (v.ItemVariationData != null) ? (decimal)v.ItemVariationData.PriceMoney.Amount : 0;
+                        menu.Add(new FoodItem { Name = v.ItemData.Name, Price = d });
+                    }
+                }
+                Constants.menu = menu;
+                //Console.WriteLine(result2.ToString());
+                //After laoding the menu, loads orders
+                await LoadOpenOrders(squareClient);
+                if (Constants.orders == null)
+                    await CreateOrder(squareClient);
+
+            }
+        }
+        catch (ApiException e)
+        {
+            Console.WriteLine("Failed to make the request");
+            Console.WriteLine($"Response Code: {e.ResponseCode}");
+            Console.WriteLine($"Exception: {e.Message}");
+            Console.WriteLine($"Exception: {e.Errors[0]}");
+            Console.WriteLine($"Exception: {e.Errors}");
+        }
+    }
+    public static async Task LoadOpenOrders(SquareClient? client)
+    {
+        if (client == null){
+            client = LoadClient();
+        }
+        var locationIds = new List<string>();
+        locationIds.Add("L8FG93SZGWKKE");
+
+        var states = new List<string>();
+        states.Add("OPEN");
+
+        var stateFilter = new SearchOrdersStateFilter.Builder(states: states)
+          .Build();
+
+        var filter = new SearchOrdersFilter.Builder()
+          .StateFilter(stateFilter)
+          .Build();
+
+        var query = new SearchOrdersQuery.Builder()
+          .Filter(filter)
+          .Build();
+
+        var body = new SearchOrdersRequest.Builder()
+          .LocationIds(locationIds)
+          .Query(query)
+          .Build();
+
+        try
+        {
+            var result = await client.OrdersApi.SearchOrdersAsync(body: body);
+            Constants.orders = new List<Models.Order>();
+            foreach (var v in result.Orders)
+            {
+                Models.Order order = new Models.Order();
+                order.orders = new List<FoodItem>();
+                order.orders.Add(new FoodItem
+                    {
+                        Name = v.LineItems[0].Name,
+                        Quantity = int.Parse(v.LineItems[0].Quantity),
+                        OrderedTime = DateTime.Parse(v.CreatedAt)
+                      //  ,Status = (FoodStatus)Enum.Parse(typeof(FoodStatus), v.State, true)
+                    });
+                Constants.orders.Add(order);
+            }
+        }
+        catch (ApiException e)
+        {
+            Console.WriteLine("Failed to make the request");
+            Console.WriteLine($"Response Code: {e.ResponseCode}");
+            Console.WriteLine($"Exception: {e.Message}");
+
+        }
+    }
+    static SquareClient LoadClient()
+    {
+        try
+        {
+            //On start, connects to square
+            BearerAuthModel bearerAuthModel = new BearerAuthModel.Builder("EAAAl_K8EG811ePfaKfStuep9mS_aa62Zw94o2KrCGEqRwCIauYkgxIf7bCMqaPt")
+            .Build();
+            return new SquareClient.Builder()
+        .Environment(Square.Environment.Sandbox)
+        .BearerAuthCredentials(bearerAuthModel)
+         .Build();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+            return null;
+        }
+    }
+    }
+

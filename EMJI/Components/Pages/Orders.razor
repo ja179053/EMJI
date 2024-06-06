@@ -1,0 +1,118 @@
+﻿@page "/orders"
+@using Models
+@using Classes
+@using Plugin.Maui.Audio
+<h3>Orders</h3>
+@if (tables == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <button class="btn btn-primary" @onclick="NewOrder">Create Order</button>
+    <button class="btn btn-primary" @onclick="LoadOrders">Refresh</button>
+    <button class="btn btn-primary" @onclick="HideClosed">@hideClosedText</button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Table Name</th>
+                <th>Notes</th>
+                <th>Last Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var table in tables)
+            {
+            <td>@table.Name</td>
+            <td>@table.Reservation.ClientInfo.FullName</td>
+            <td>@table.Reservation.Notes</td>
+            <td>@table.LastUpdated.ToShortTimeString()</td>
+                @foreach (var order in table.Order)
+                @foreach (var foodItem in order.orders)
+                {
+                        if (!hideClosed || foodItem.Status == FoodStatus.Ordered)
+                        {
+                            <tr>
+                                <td>@foodItem.Name</td>
+                    <td>@foodItem.Quantity</td>
+                    <td>@foodItem.Status</td>
+                    <button class="btn btn-primary"  @onclick="() => UpdateOrder(foodItem)">Update Order</button>
+                    </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+
+}
+@code {
+    static bool loaded = false;
+    static bool hideClosed = true;
+    string hideClosedText { get => (hideClosed) ? "Show Closed" : "Hide Closed"; }
+    List<Table> tables = new List<Table>();
+    void HideClosed()
+    {
+        hideClosed = !hideClosed;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        if (!loaded)
+        {
+            await LoadOrders();
+            loaded = true;
+        }
+    }
+    async Task LoadOrders()
+    {
+        if (loaded)
+        {
+            //Redoes the load pattern
+            List<Order> orders = Constants.orders;
+            await Home.LoadOpenOrders(null);
+            if (orders != Constants.orders)
+                await PlayNewOrderSound();
+
+    }
+        else
+        {
+            if (Constants.orders != null)
+            {
+                tables.Add(Constants.testTable);
+
+                foreach (EMJI.Models.Order order in Constants.orders)
+                    foreach (FoodItem foodItem in order.orders)
+                        tables[0].Order[0].orders.Add(foodItem);
+            } else
+            {
+                Console.WriteLine("constant orders not set up");
+            }
+        }
+
+    }
+    async void NewOrder()
+    {
+        //Show a dropdown list made from an enum of all tables that are sat
+        Table table = tables[0];
+        //After selecting a table, select a food item from the menu. Repeat until order is complete.
+        Order order = Constants.testOrder; //Food items are set to ordered
+        foreach (FoodItem foodItem in order.orders.ToList())
+            table.Order[0].orders.Add(foodItem);
+        await PlayNewOrderSound();
+    }
+    async Task PlayNewOrderSound()
+    {
+        var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("NewOrderAlert.m4a"));
+        player.Play();        
+    }
+    bool sent (FoodItem f){ 
+        return f.Status == FoodStatus.Sent; 
+    }
+    async void UpdateOrder(FoodItem foodItem)
+    {
+        foodItem.Status = FoodStatus.Sent;
+        var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("OrderReady.mp3"));
+        player.Play();
+    }
+
+
+}

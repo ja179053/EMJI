@@ -1,0 +1,27 @@
+﻿@page "/analytics"
+<h3>Analytics</h3>
+<img draggable="true" src="~/emjilogo.png" />
+<style>
+    #div1, #div2, #div3 {
+        float: left;
+        width: 100px;
+        height: 35px;
+        margin: 10px;
+        padding: 10px;
+        border: 1px solid black;
+        
+    }
+</style>
+<div id="div1" ondrop="@OnDrag" ondragover="event.preventDefault" dropzone="move"></div>
+<div id="div2" ondrop="@OnDrag" ondragover="event.preventDefault" dropzone="move"></div>
+<div id="div3" ondrop="@OnDrag" ondragover="event.preventDefault" dropzone="move"></div>
+@code {
+    void OnDrop(DragEventArgs dragEventArgs)
+    {
+        
+    }
+    void OnDrag(DragEventArgs dragEventArgs)
+    {
+        //dragEventArgs.DataTransfer.
+    }
+}

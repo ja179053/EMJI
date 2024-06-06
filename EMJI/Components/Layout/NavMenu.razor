@@ -1,0 +1,46 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">EMJI</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="reservations" hidden="@isNotStaff">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Reservations
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="clients" hidden="@isNotAdmin">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Clients
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="floorplan" hidden="@isNotStaff">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Floorplan
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="orders" hidden="@isNotStaff">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Orders
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="analytics" hidden="@isNotAdmin">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Analytics
+            </NavLink>
+        </div>
+    </nav>
+</div>
+@code{
+    bool isNotStaff = !Classes.Constants.hasStaffAccess;
+    bool isNotAdmin = !Classes.Constants.hasAdminAccess;
+}

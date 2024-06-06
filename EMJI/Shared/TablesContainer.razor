@@ -1,0 +1,41 @@
+﻿@using EMJI.Models;
+<div class="tables-container">
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+</div>
+@code {
+    [Parameter]
+    public List<Table> Tables
+    {
+        get;
+        set;
+    }
+    [Parameter]
+    public RenderFragment ChildContent
+    {
+        get;
+        set;
+    }
+    [Parameter]
+    public EventCallback<Table> OnStatusUpdated
+    {
+        get;
+        set;
+    }
+    public Table Payload
+    {
+        get;
+        set;
+    }
+    public async Task UpdateTableAsync(TableStatus newStatus)
+    {
+        var task = Tables.SingleOrDefault(x => x.Id == Payload.Id);
+        if (task != null)
+        {
+            task.Status = newStatus;
+            task.LastUpdated = DateTime.Now;
+            await OnStatusUpdated.InvokeAsync(Payload);
+        }
+    }
+}

@@ -1,0 +1,198 @@
+﻿@using EMJI.Components.Classes
+@using EMJI.Models
+@using Plugin.Maui.Audio
+@using SQLite
+@using System.Collections.Generic;
+@using System;
+@inject NavigationManager NavigationManager
+@page "/reservations"
+<h3>Reservations</h3>
+
+<button class="btn btn-primary" @onclick="ToggleView">@Toggle</button>
+<p role="status">@Header: @ReservationsToShow.Count</p>
+
+
+<button class="btn btn-primary" @onclick="NewReservation">New Reservation</button>
+<button class="btn btn-primary" @onclick="WalkIn">Add Walk-In</button>
+<form method="post" hidden ="@hideForm" @onsubmit="Submit" @formname="/reservation-form">
+    <AntiforgeryToken />
+    <div>
+        <label>
+            Date:
+            <InputDate @bind-Value="newReservation1!.Date" />
+        </label>
+
+        <label>
+            Identifier:
+            <InputText @bind-Value="newReservation1!.ClientInfo.FirstName" />
+        </label>
+        <label>
+            Identifier:
+            <InputText @bind-Value="newReservation1!.ClientInfo.Surname" />
+        </label>
+        <label>
+            Identifier:
+            <InputText @bind-Value="newReservation1!.ClientInfo.Email" />
+        </label>
+        <label>
+            Identifier:
+            <InputText @bind-Value="newReservation1!.ClientInfo.PhoneNumber" />
+        </label>
+
+        <label>
+            Size:
+            <InputNumber @bind-Value="newReservation1!.Size" />
+        </label>
+        <label>
+            Notes:
+            <InputText @bind-Value="newReservation1!.Notes" />
+        </label>
+    </div>
+    <div>
+        <button type="submit">Submit</button>
+    </div>
+</form>
+@if (ReservationsToShow == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Size</th>
+                <th>Name</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var reservation in ReservationsToShow)
+            {
+                <tr>
+                    <td>@reservation.reservation.Date.ToShortDateString()</td>
+                    <td>@reservation.reservation.Size</td>
+                    <td>@reservation.reservation.ClientInfo.FullName </td>
+                    <td>@reservation.reservation.Notes</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    Reservation newReservation1 = Constants.newReservation;
+    static bool past = true, hideForm = true;
+    static List<SortableReservation> ReservationsToShow {get => 
+        (past) ? allReservations.Where(r => r.reservation.Date < Constants.Tomorrow.AddDays(1)).ToList()
+        : allReservations.Where(r => r.reservation.Date >= Constants.Tomorrow.AddDays(1)).ToList();}
+    public static List<SortableReservation> allReservations = new List<SortableReservation>();
+    Database database;
+    string Header { get => (past) ? "Upcoming Reservations" : "Past Reservations"; }
+    string Toggle { get => (past) ? "Show Past Reservations" : "Show Upcoming Reservations"; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        database = new Database();
+        try
+        {//Reservations either aren't being saved or aren't being loaded. I believe they're not being loaded, but i can't find the save file.
+            List<Reservation> res = new List<Reservation>();
+            //res = await database.GetReservationsAsync();
+            foreach(Reservation r in res)
+            {
+                allReservations.Add(new SortableReservation(r));
+            }
+        } catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+    }
+    async void ToggleView()
+    {
+        past = !past;
+    }
+    private async void NewReservation()
+    {
+        hideForm = !hideForm;
+    }
+    private async void Submit()
+    {
+        allReservations.Add(new SortableReservation(newReservation1));
+        newReservation1 = Constants.testReservation;
+        allReservations.Sort();
+        //await database.AddAsync(DatabaseType.Reservations, r);
+        await App.Current.MainPage.DisplayAlert("Reservation Successful", "A confirmation will be sent shortly.", "OK");
+        //NavigationManager.NavigateTo("reservations", true);
+        var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("simple-notification-152054.mp3"));
+        player.Play();
+    }
+    private async void WalkIn()
+    {
+        // TODO: New Reservation Page where you can add the date
+        // TODO Database
+        //DateOnly date = await App.Current.MainPage.dis ("New Reservation", "What is the full name of the client?", initialValue: "", keyboard: Keyboard.Text);
+        DateTime date = DateTime.Now;
+        string fullName = await App.Current.MainPage.DisplayPromptAsync("New Reservation", "What is the full name of the client?", keyboard: Keyboard.Text);
+        if (fullName == null)
+            return;
+        string s = (await App.Current.MainPage.DisplayPromptAsync("New Reservation", "How many people is the reservation for?", keyboard: Keyboard.Numeric, placeholder: "2"));
+        if (s == null)
+            return;
+        int size = (s.Length == 0) ? 2 : int.Parse(s);
+        string notes = await App.Current.MainPage.DisplayPromptAsync("New Reservation", "Do you have any notes? (Special Occassion/Dietary Requirements)", keyboard: Keyboard.Text);
+        if (notes == null)
+            return;
+        string email = await App.Current.MainPage.DisplayPromptAsync("New Reservation", "What is the client's email address?", keyboard: Keyboard.Text);
+        if (email == null)
+            return;
+        string phoneNumber = await App.Current.MainPage.DisplayPromptAsync("New Reservation", "What is the client's phone number?", keyboard: Keyboard.Numeric, maxLength: 13);
+        if (phoneNumber == null)
+            return;
+        /*bool hasEmail = email.Contains('@') && email.Contains('.');
+        bool hasPhone = phoneNumber.Length > 10;
+        if(!hasEmail && !hasPhone)
+            {
+            await App.Current.MainPage.DisplayAlert("Please try again", "You must enter either a valid email or a valid phone number.", "OK");
+            return;
+        }*/
+        if (await App.Current.MainPage.DisplayAlert("Are these details correct?", string.Format("Reservation for {0} on {1} at {2}. Under the name of {3}. Email: {4} Phone Number {5}", size, date.ToShortDateString(), date.ToLocalTime(), fullName, email, phoneNumber), "Yes", "No"))
+        {
+            string firstName = fullName;
+            string lastName = fullName;
+            Client client = new Client { FirstName = firstName, Surname = lastName, PhoneNumber = phoneNumber, Email = email };
+            Reservation r = new Reservation { ClientInfo = client, Date = date, Size = size, Notes = notes };
+            allReservations.Add(new SortableReservation(r));
+            allReservations.Sort();
+            //await database.AddAsync(DatabaseType.Reservations, r);
+            await App.Current.MainPage.DisplayAlert("Reservation Successful", "", "OK");
+            var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("simple-notification-152054.mp3"));
+            player.Play();
+            NavigationManager.NavigateTo("reservations", true);
+        }
+    }
+    public class SortableReservation : IEquatable<SortableReservation>, IComparable<SortableReservation>
+    {
+        public SortableReservation(Reservation r)
+        {
+            reservation = r;
+        }
+        public Reservation reservation;
+        public int CompareTo(SortableReservation comparePart)
+        {
+            // A null value means that this object is greater.
+            if (comparePart == null)
+                return 1;
+
+            else
+                return this.reservation.Date.CompareTo(comparePart.reservation.Date);
+        }
+        public bool Equals(SortableReservation other)
+        {
+            if (other == null) return false;
+            return (this.reservation.Date.Equals(other.reservation.Date));
+        }
+    }
+}
+
+    

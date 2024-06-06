@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Windows Machine": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": false
+    }
+  },
+  "AppSettings": {
+    "AccessToken": "{EAAAl_K8EG811ePfaKfStuep9mS_aa62Zw94o2KrCGEqRwCIauYkgxIf7bCMqaPt}"
+  }
+}

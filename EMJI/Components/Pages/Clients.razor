@@ -1,0 +1,43 @@
+﻿@using Models
+@using static EMJI.Components.Pages.Reservations
+@page "/clients"
+<h3>Clients</h3>
+@if (clients == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Size</th>
+                <th>Name</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in clients)
+            {
+                <tr>
+                    <td>@client.FirstName + " " + @client.Surname </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    static List<Client> clients = new List<Client>();
+    protected override async Task OnInitializedAsync()
+    {
+        if (Reservations.allReservations != null && Reservations.allReservations.Count > 0)
+            foreach (SortableReservation r in Reservations.allReservations)
+            {
+                clients.Add(new Client { FirstName = r.reservation.ClientInfo.FirstName, Surname = r.reservation.ClientInfo.Surname, Email = r.reservation.ClientInfo.Email, PhoneNumber = r.reservation.ClientInfo.PhoneNumber });
+            }
+    }
+    //Class for sortable clients, including analytic data
+}
+

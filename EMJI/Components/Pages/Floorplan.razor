@@ -1,0 +1,128 @@
+﻿@page "/floorplan"
+<h3>Floorplan</h3>
+@using EMJI.Models
+@using EMJI.Shared
+@using static EMJI.Components.Pages.Reservations
+<style>
+    #div1, #div2, #div3 {
+        float: left;
+        width: 100px;
+        height: 35px;
+        margin: 10px;
+        padding: 10px;
+        border: 1px solid black;
+        
+    }
+    #tr1{
+        background: blue;
+        border: 5px solid black;
+    }
+</style>
+<label>These are today's clients</label>
+<button title="<" onclick="ChangeDate('-1')}"></button>
+<InputDate @bind-Value=date />
+<button title=">" onclick="{() => ChangeDate('${1}')}"></button>
+<table class="table">
+    <thead>
+        <tr hidden={@todaysReservations.Count == 0}>
+            <th>Date</th>
+            <th>Size</th>
+            <th>Name</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var reservation in todaysReservations)
+        {
+            <tr id="tr1" draggable="true" ondrag="@DragEvent">
+                <td>@reservation.reservation.Date.ToShortDateString()</td>
+                <td>@reservation.reservation.Size</td>
+                <td>@reservation.reservation.ClientInfo.FullName </td>
+                <td>@reservation.reservation.Notes</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<label>Tables should be on the right</label>
+<label>This is your floorplan</label>
+<InputSelect @bind-Value="selectedReservation" hidden="@hideRes">
+    @foreach (SortableReservation value in todaysReservations)
+    {
+        <option>@value.reservation.ClientInfo.FullName</option>
+    }
+</InputSelect>
+<InputSelect @bind-Value="selectedTable">
+    @foreach (var value in Tables)
+    {
+        <option>@value.Name</option>
+    }
+</InputSelect>
+
+
+
+<TablesContainer Tables="Tables" OnStatusUpdated="HandleStatusUpdated">
+    
+    </TablesContainer>
+@foreach (var task in Tables)
+{
+    <p>@task.Name - <strong>@task.Status</strong></p>
+}
+    
+@code {
+        bool hideRes
+    {
+            get => @todaysReservations.Count == 0;
+        }
+    public string DragState = "waiting...";
+    DateTime date = DateTime.Today;
+    SortableReservation selectedReservation;
+    Table selectedTable;
+    List<SortableReservation> todaysReservations { get => Reservations.allReservations.Where(r => r.reservation.Date.ToShortDateString() == date.ToShortDateString()).ToList(); set { } }
+
+    List < Table > Tables = new List < Table > ();
+
+    protected override void OnInitialized() {
+        Tables.Add(new Table {
+            Id = 1, Name = " Table 1", Status = TableStatus.Unassigned, LastUpdated = DateTime.Now
+        });
+    }
+    protected async void ClickedEvent() {
+        // await App.Current.MainPage.DisplayAlert("Click Successful", "", "OK");
+    }
+    protected async void DragEvent(object sender, DragEventArgs e)
+    {
+        //e.dataTransfer.setData("text", ev.target.id);
+        DragState = "dragging "
+        + sender.ToString()
+        //+ e.DataTransfer.ToString()
+        ;
+    }
+    protected async void DragOver(DragEventArgs e)
+    {
+        DragState = "dragged over";
+        e.DataTransfer.DropEffect = "move";
+        //e.preventDefault();
+    }
+    protected async void DropEvent(DragEventArgs e)
+    {
+        /*
+        e.preventDefault();
+        var data = e.dataTransfer.getData("text");
+        e.target.appendChild(document.getElementById(data));*/
+        DragState = "dropped " + e.Type;
+
+    }
+    void HandleStatusUpdated(Table updatedTable)
+    {
+        updatedTable.LastUpdated = DateTime.Now;
+    }
+    async void ChangeDate(string i)
+    {
+        ChangeDate(int.Parse(i));
+    }
+    async void ChangeDate(int i)
+    {
+        date = date.AddDays(i);
+         await App.Current.MainPage.DisplayAlert("Date Changed", date.ToShortDateString(), "OK");
+    }
+}
