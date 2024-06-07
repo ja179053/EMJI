@@ -3,7 +3,7 @@
 @using Classes
 @using Plugin.Maui.Audio
 <h3>Orders</h3>
-@if (tables == null)
+@if (Tables == null)
 {
     <p><em>Loading...</em></p>
 }
@@ -21,7 +21,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var table in tables)
+            @foreach (var table in Tables)
             {
             <td>@table.Name</td>
             <td>@table.Reservation.ClientInfo.FullName</td>
@@ -44,12 +44,21 @@ else
         </tbody>
     </table>
 
+    <InputSelect  @bind-Value="SelectedTableName">
+        @foreach (Table table in Tables)
+        {
+            <option value=@table.Name>@table.Name</option>
+        }
+    </InputSelect>
 }
 @code {
+    string SelectedTableName { get => (SelectedTable == null) ? "" : SelectedTable.Name; set => selectedTable = Tables.Find(obj => obj.Name == value); }
     static bool loaded = false;
     static bool hideClosed = true;
     string hideClosedText { get => (hideClosed) ? "Show Closed" : "Hide Closed"; }
-    List<Table> tables = new List<Table>();
+    List<Table> Tables = new List<Table>();
+    Table SelectedTable { get => (selectedTable == null) ? Tables[0] : selectedTable; set => selectedTable = value; } 
+    Table selectedTable;
     void HideClosed()
     {
         hideClosed = !hideClosed;
@@ -72,16 +81,18 @@ else
             if (orders != Constants.orders)
                 await PlayNewOrderSound();
 
-    }
+        }
         else
         {
             if (Constants.orders != null)
             {
-                tables.Add(Constants.testTable);
+                Tables.Add(Constants.testTable); 
+                Tables.Add(new Table { Name = "Table 2", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = new List<Order> { (Constants.testOrder) }, Reservation = Tables[0].Reservation, LastUpdated = DateTime.Now });
+    Tables[1].Name = "Table 2";
 
                 foreach (EMJI.Models.Order order in Constants.orders)
                     foreach (FoodItem foodItem in order.orders)
-                        tables[0].Order[0].orders.Add(foodItem);
+                        Tables[0].Order[0].orders.Add(foodItem);
             } else
             {
                 Console.WriteLine("constant orders not set up");
@@ -91,12 +102,10 @@ else
     }
     async void NewOrder()
     {
-        //Show a dropdown list made from an enum of all tables that are sat
-        Table table = tables[0];
         //After selecting a table, select a food item from the menu. Repeat until order is complete.
         Order order = Constants.testOrder; //Food items are set to ordered
         foreach (FoodItem foodItem in order.orders.ToList())
-            table.Order[0].orders.Add(foodItem);
+            SelectedTable.Order[0].orders.Add(foodItem);
         await PlayNewOrderSound();
     }
     async Task PlayNewOrderSound()

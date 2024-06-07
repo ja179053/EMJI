@@ -18,10 +18,10 @@
         border: 5px solid black;
     }
 </style>
-<label>These are today's clients</label>
-<button title="<" onclick="ChangeDate('-1')}"></button>
+<label>These are today's clients</label
+    <button title="<" @onclick="@(() => ChangeDate(@"-1"))"></button>
 <InputDate @bind-Value=date />
-<button title=">" onclick="{() => ChangeDate('${1}')}"></button>
+    <button title=">" @onclick="@(() => ChangeDate(@"1"))"></button>
 <table class="table">
     <thead>
         <tr hidden={@todaysReservations.Count == 0}>
@@ -45,12 +45,6 @@
 </table>
 <label>Tables should be on the right</label>
 <label>This is your floorplan</label>
-<InputSelect @bind-Value="selectedReservation" hidden="@hideRes">
-    @foreach (SortableReservation value in todaysReservations)
-    {
-        <option>@value.reservation.ClientInfo.FullName</option>
-    }
-</InputSelect>
 <InputSelect @bind-Value="selectedTable">
     @foreach (var value in Tables)
     {
@@ -77,7 +71,7 @@
     DateTime date = DateTime.Today;
     SortableReservation selectedReservation;
     Table selectedTable;
-    List<SortableReservation> todaysReservations { get => Reservations.allReservations.Where(r => r.reservation.Date.ToShortDateString() == date.ToShortDateString()).ToList(); set { } }
+    List<SortableReservation> todaysReservations { get => Reservations.allReservations.Where(r => r.reservation.Date.ToShortDateString() == date.ToShortDateString()).ToList();}
 
     List < Table > Tables = new List < Table > ();
 
@@ -85,6 +79,7 @@
         Tables.Add(new Table {
             Id = 1, Name = " Table 1", Status = TableStatus.Unassigned, LastUpdated = DateTime.Now
         });
+                Tables.Add(new Table { Name = "Table 2", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = (Tables[0].Order), Reservation = Tables[0].Reservation, LastUpdated = DateTime.Now });
     }
     protected async void ClickedEvent() {
         // await App.Current.MainPage.DisplayAlert("Click Successful", "", "OK");
@@ -118,11 +113,7 @@
     }
     async void ChangeDate(string i)
     {
-        ChangeDate(int.Parse(i));
-    }
-    async void ChangeDate(int i)
-    {
-        date = date.AddDays(i);
-         await App.Current.MainPage.DisplayAlert("Date Changed", date.ToShortDateString(), "OK");
+        date = date.AddDays(int.Parse(i));
+      //   await App.Current.MainPage.DisplayAlert("Date Changed", date.ToShortDateString(), "OK");
     }
 }
