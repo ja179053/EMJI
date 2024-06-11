@@ -1,4 +1,5 @@
 ﻿@using Models
+@using Models.Sortable
 @using static EMJI.Components.Pages.Reservations
 @page "/clients"
 <h3>Clients</h3>
@@ -11,8 +12,6 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Size</th>
                 <th>Name</th>
                 <th>Notes</th>
             </tr>
@@ -21,7 +20,8 @@ else
             @foreach (var client in clients)
             {
                 <tr>
-                    <td>@client.FirstName + " " + @client.Surname </td>
+                    <td>@client.FullName </td>
+                    <td>@client.Notes </td>
                 </tr>
             }
         </tbody>
@@ -29,9 +29,11 @@ else
 }
 
 @code {
+    //Can include information about past and future reservations here
     static List<Client> clients = new List<Client>();
     protected override async Task OnInitializedAsync()
     {
+        clients = new List<Client>();
         if (Reservations.allReservations != null && Reservations.allReservations.Count > 0)
             foreach (SortableReservation r in Reservations.allReservations)
             {

@@ -33,7 +33,6 @@ namespace EMJI.Components.Classes
         public static Reservation newReservation = new Reservation { Date = Tomorrow, Notes = "None", Size = 2, ClientInfo = new Client { FirstName = "", Surname = "", ID = Guid.NewGuid(), Email = "", PhoneNumber = "" } };
 
         public static FoodItem testFoodItem = new FoodItem { Name = "Bread", Price = 3.00M, Quantity=1, Status = FoodStatus.Ordered };
-
         public static Order testOrder { get => new Order { orders = new List<FoodItem> { testFoodItem } }; }
         public static Table testTable = new Table { Name = "Table 1", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = new List<Order> { testOrder}, Reservation = testReservation, LastUpdated = DateTime.Now };
     }

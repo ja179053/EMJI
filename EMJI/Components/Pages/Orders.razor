@@ -1,126 +1,343 @@
 ﻿@page "/orders"
 @using Models
+@using Models.Sortable
 @using Classes
 @using Plugin.Maui.Audio
-<h3>Orders</h3>
-@if (Tables == null)
-{
-    <p><em>Loading...</em></p>
+
+<style>
+.button-table {
+  border: none;
+  color: black;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  background-color: blue
 }
-else
-{
-    <button class="btn btn-primary" @onclick="NewOrder">Create Order</button>
-    <button class="btn btn-primary" @onclick="LoadOrders">Refresh</button>
-    <button class="btn btn-primary" @onclick="HideClosed">@hideClosedText</button>
-    <table class="table">
+</style>
+
+<h3>Orders</h3>
+    @if (Tables == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {<table class="table" title="Summary">
         <thead>
             <tr>
-                <th>Table Name</th>
-                <th>Notes</th>
-                <th>Last Updated</th>
+                <th>Item Name</th>
+                <th>No.</th>
+
+                <th></th>
+                <th></th>
+
             </tr>
         </thead>
         <tbody>
-            @foreach (var table in Tables)
-            {
-            <td>@table.Name</td>
-            <td>@table.Reservation.ClientInfo.FullName</td>
-            <td>@table.Reservation.Notes</td>
-            <td>@table.LastUpdated.ToShortTimeString()</td>
-                @foreach (var order in table.Order)
-                @foreach (var foodItem in order.orders)
-                {
+                    @foreach (var foodItem in @TotalOrder.orders)
                         if (!hideClosed || foodItem.Status == FoodStatus.Ordered)
                         {
                             <tr>
                                 <td>@foodItem.Name</td>
-                    <td>@foodItem.Quantity</td>
-                    <td>@foodItem.Status</td>
-                    <button class="btn btn-primary"  @onclick="() => UpdateOrder(foodItem)">Update Order</button>
-                    </tr>
-                    }
-                }
-            }
+                                <td>@foodItem.Quantity</td>
+                                <button class="button-table" @onclick="@(() => Send(@foodItem.Name))">Send First</button>
+                        <button class="button-table" @onclick="@(() => SendAll(@foodItem.Name))">Send All</button>
+                            </tr>
+                        }
         </tbody>
-    </table>
+    </table> 
 
-    <InputSelect  @bind-Value="SelectedTableName">
+        <button class="btn btn-primary" @onclick="NewOrder">Create Order</button>
+        <button class="btn btn-primary" @onclick="LoadOrders">Refresh</button>
+    <button class="btn btn-primary" @onclick="()=> hideClosed = !hideClosed">@hideClosedText</button>
+    <InputSelect @bind-Value="SelectedTableName">
         @foreach (Table table in Tables)
         {
             <option value=@table.Name>@table.Name</option>
         }
     </InputSelect>
-}
+        <table class="table">
+            <thead>
+                <tr>
+                <th>Table Name</th>
+                <th>Last Updated</th>
+                <br />
+                    <th>Notes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var table in Tables)
+            {
+                <tr>
+                    <td>@table.Name</td>
+                    <tc hidden=@table.Collapsed>
+                        <td>@table.LastUpdated.ToShortTimeString()</td>
+                    <td>@table.Reservation.Notes</td>
+                </tc>
+                <button @onclick="() => table.Collapsed = !table.Collapsed">Collapse</button>
+                </tr>
+                    @foreach (var order in table.Order)
+                        @foreach (var foodItem in order.orders)
+                            if (!hideClosed || foodItem.Status == FoodStatus.Ordered)
+                            {
+                            <tr hidden="@table.Collapsed">
+                                <td>@foodItem.Name</td>
+                                <td>@foodItem.OrderedTime.ToShortTimeString()</td>
+                                <td>@foodItem.Quantity</td>
+                                <td>@foodItem.Status</td>
+                                <button class="button-table" @onclick="() => UpdateOrder(foodItem)">Update Order</button>
+                            </tr>
+                            }
+                }
+            </tbody>
+        </table>
+
+    }
+
 @code {
+    #region Summary
+    List<FoodItem> totals = new List<FoodItem>();
+    Order TotalOrder
+    {
+        get
+        {
+            if (totalOrder == null)
+            {
+                totals = new List<FoodItem>();
+                foreach (var table in Tables)
+                    foreach (var order in table.Order)
+                        foreach (FoodItem foodItem in order.orders)
+                            AddToTotal(foodItem);
+                totalOrder = new Order { orders = totals };
+            }
+            return totalOrder;
+        }
+    }
+    Order totalOrder;
+    async void SendAll(string s)
+    {
+        foreach (var table in Tables)
+            foreach (var order in table.Order)
+                foreach (FoodItem foodItem in order.orders.Where(f => (f.Name.ToLower() == s.ToLower())))
+                {
+                    foodItem.Status = FoodStatus.Sent;
+                    System.Diagnostics.Debug.WriteLine(string.Format("Sent {0} {1}{2}", foodItem.Quantity, foodItem.Name, (foodItem.Quantity > 1) ? "s" : ""));
+                }
+        SubtractFromTotal(s, 0);
+        await PlayNewOrderSound();
+    }
+    Table selectedTable2;
+    Order selectedOrder;
+    bool Multiple(int i)
+    {
+        return i > 1;
+    }
+    async void Send(string s)
+    {
+        ///Let's think this out thoroughly, shall we?
+        ///There will be a prompt where you can enter how many of the item you have.
+        ///Once you enter that amount, it will calculate which tables to send the items to
+        ///If you don't have enough to complete every table, it will say how many more you need for the next tables, and in total
+        ///Simple, right?
+        ///Would be nice to display the tables at the top of the page. And also to ask for confirmation to avoid misclicks.
+        int total = TotalsFoodItem(s).Quantity;
+        int min = -1, max = -1, quantity = 1;
+        Table minTable = null;
+        List<int> tally = new List<int>();
+        if (int.TryParse(
+            //try parse only wants you to type in the value
+            await App.Current.MainPage.DisplayPromptAsync(string.Format("How many {0} to send?", s), "", keyboard: Keyboard.Numeric, initialValue: quantity.ToString())
+        , out quantity)){
+
+            //These are all the tables with the food item in question, and enough quantity
+            List<SortableTable> answers = new List<SortableTable>();
+            List<SortableTable> failures = new List<SortableTable>();
+            string calculation = "Send to ";
+            foreach (Table table in Tables)
+                foreach (FoodItem foodItem in table.FoodItems.Where(f => (f.Name.ToLower() == s.ToLower())))
+                {
+                    tally.Add(foodItem.Quantity);
+                    if (quantity >= foodItem.Quantity)
+                    {
+                        calculation += table.Name + " ";
+                        answers.Add(new SortableTable(table));
+                    }
+                    else
+                    {
+                        failures.Add(new SortableTable(table));
+                    }
+                    if (min == -1 || min > foodItem.Quantity){
+                        min = foodItem.Quantity;
+                        minTable = table;
+                    }
+                    if (max < foodItem.Quantity)
+                        max = foodItem.Quantity;
+                }
+            if(quantity < min || answers.Count == 0)
+            {
+                await App.Current.MainPage.DisplayAlert("Insufficient quantity", string.Format("You need {0} {1}{2} to complete an order for {3}", min, s, (min > 1) ? "s" : "", minTable.Name), "OK");
+            } else
+            {
+                //Calculate how many tables you can send food to
+                //Surplus food will be sent to all tables
+                //Sort the tables in arrival order, have a for loop to offer to each table until quantity is zero
+                if (total <= quantity)
+                {
+                    SendAll(s);
+                    await App.Current.MainPage.DisplayAlert(string.Format("Send to {0} tables", answers.Count), calculation,  "OK");
+                } else
+                if(await App.Current.MainPage.DisplayAlert(string.Format("You can send {0} {1} to {2} tables", quantity, s, answers.Count), "", "OK","Cancel"))
+                {
+                    answers.Sort();
+                    //Displays which table came first, how many tables can be served
+                    for (int i = 0; i < answers.Count; i++)
+                        while (quantity > 0)
+                            foreach (FoodItem foodItem in answers[i].table.FoodItems.Where(f => (f.Name.ToLower() == s.ToLower()))) 
+                                if (await App.Current.MainPage.DisplayAlert(string.Format("Send {0}?", s), string.Format("You can send {0} {1} to {2}", foodItem.Quantity, foodItem.Name, answers[i].table.Name), "OK", "Cancel"))
+                                {
+                                    quantity -= foodItem.Quantity;
+                                    foodItem.Status = FoodStatus.Sent;
+                                    SubtractFromTotal(foodItem);
+                                    var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("OrderReady.mp3"));
+                                    player.Play();
+                                }
+                }
+            }
+            /*
+
+            ///Shows popup asking which table(s) to send the food to (which order(s) to complete)
+            ///Lists table in order of quantity from lowest to highest, or time order
+            ///When selected, creates an item of the set quantity, and updates the order to sent
+            List<FoodItem> foodItems = null;
+            // List<FoodItem> foodItems
+            //  = selectedOrder.orders.Where(f => (f.Name == s));
+            foreach(FoodItem foodItem in foodItems){
+                foodItem.Status = FoodStatus.Sent;
+                SubtractFromTotal(foodItem);
+            }
+            */
+        }
+    }
+    void AddToTotal(FoodItem foodItem)
+    {
+        //foodItem.Quantity = 10;
+        if (totals.Exists(f => f.Name.ToLower() == foodItem.Name.ToLower()))
+        {
+            totals.Find(f => f.Name.ToLower() == foodItem.Name.ToLower()).Quantity += foodItem.Quantity;
+        }
+        else
+        {
+            totals.Add(new FoodItem {Name = foodItem.Name, OrderedTime = foodItem.OrderedTime, Price = foodItem.Price, Quantity = foodItem.Quantity, Status = foodItem.Status });
+        }        
+    }
+    void SubtractFromTotal(FoodItem foodItem)
+    {
+        SubtractFromTotal(foodItem.Name, foodItem.Quantity);
+    }
+    FoodItem TotalsFoodItem(string s) {
+        return totals.Find(f => f.Name.ToLower() == s.ToLower()); 
+    }
+    async void SubtractFromTotal(string s, int quantity = 1)
+    {
+        FoodItem f = TotalsFoodItem(s);
+        if(f == null)
+        {
+            await App.Current.MainPage.DisplayAlert("A serious error occurred","OK","");
+            return;
+        }
+        if (quantity == 0)
+            quantity = f.Quantity;
+        f.Quantity -= quantity;
+        if(f.Quantity == 0)
+        {
+            totals.Remove(f);
+        }
+    }
+    #endregion
     string SelectedTableName { get => (SelectedTable == null) ? "" : SelectedTable.Name; set => selectedTable = Tables.Find(obj => obj.Name == value); }
-    static bool loaded = false;
     static bool hideClosed = true;
     string hideClosedText { get => (hideClosed) ? "Show Closed" : "Hide Closed"; }
-    List<Table> Tables = new List<Table>();
-    Table SelectedTable { get => (selectedTable == null) ? Tables[0] : selectedTable; set => selectedTable = value; } 
-    Table selectedTable;
-    void HideClosed()
+    //string collapseText { get => (hideClosed) ? "Collapse" : "Expand"; }
+    static List<Table> tables = new List<Table>();
+    List<Table> Tables
     {
-        hideClosed = !hideClosed;
-    }
+        get
+        {
+            if(tables.Count == 0)
+            {
+                tables.Add(Constants.testTable);
+                tables.Add(new Table { Name = "Table 2", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = new List<Order> { (new Order { orders = new List<FoodItem> { new FoodItem { Name = Constants.testFoodItem.Name, OrderedTime = DateTime.Now, Price = Constants.testFoodItem.Price, Quantity = Constants.testFoodItem.Quantity, Status = FoodStatus.Ordered } } }) }, Reservation = tables[0].Reservation, LastUpdated = DateTime.Now });
+                tables[1].Name = "Table 2";
+                foreach (EMJI.Models.Order order in Constants.orders)
+                    foreach (FoodItem foodItem in order.orders)
+                        tables[0].Order[0].orders.Add(foodItem);
+                //new FoodItem{Name=foodItem.Name, OrderedTime = foodItem.OrderedTime, Price = foodItem.Price, Quantity = foodItem.Quantity, Status = foodItem.Status});
+
+            }
+            return tables;
+
+        }  
+    } 
+    Table SelectedTable { get => selectedTable == null ? Tables[0] : selectedTable; set => selectedTable = value; } 
+    Table selectedTable;
     protected override async Task OnInitializedAsync()
     {
-        if (!loaded)
-        {
-            await LoadOrders();
-            loaded = true;
-        }
+        await LoadOrders();
     }
     async Task LoadOrders()
     {
-        if (loaded)
+        //if tables are already loaded
+        if (Tables != null && Tables.Count > 0)
         {
             //Redoes the load pattern
             List<Order> orders = Constants.orders;
             await Home.LoadOpenOrders(null);
-            if (orders != Constants.orders)
-                await PlayNewOrderSound();
-
+            //doesnt work yet, need to compare if the food items are equal
+            //   if (orders != Constants.orders)
+            //      await PlayNewOrderSound();
         }
-        else
-        {
-            if (Constants.orders != null)
-            {
-                Tables.Add(Constants.testTable); 
-                Tables.Add(new Table { Name = "Table 2", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = new List<Order> { (Constants.testOrder) }, Reservation = Tables[0].Reservation, LastUpdated = DateTime.Now });
-    Tables[1].Name = "Table 2";
-
-                foreach (EMJI.Models.Order order in Constants.orders)
-                    foreach (FoodItem foodItem in order.orders)
-                        Tables[0].Order[0].orders.Add(foodItem);
-            } else
-            {
-                Console.WriteLine("constant orders not set up");
-            }
-        }
-
     }
     async void NewOrder()
     {
-        //After selecting a table, select a food item from the menu. Repeat until order is complete.
-        Order order = Constants.testOrder; //Food items are set to ordered
-        foreach (FoodItem foodItem in order.orders.ToList())
-            SelectedTable.Order[0].orders.Add(foodItem);
-        await PlayNewOrderSound();
+        string[] options = null;
+        List<string> optionsList = new List<string>();
+        foreach (FoodItem foodItem in Constants.menu)
+            optionsList.Add(foodItem.Name);
+        options = optionsList.ToArray();
+        //Update this so choosing a string adds, and choosing destruct sends the action.
+        string chosenOption = await App.Current.MainPage.DisplayActionSheet("What to order?", "Cancel", "", options);
+        if (!string.IsNullOrEmpty(chosenOption))
+        {
+            //After selecting a table, select a food item from the menu. Repeat until order is complete.
+            Order order =// new Order Constants.testOrder; //Food items are set to ordered, cannot use a static variable
+            new Order { orders = new List<FoodItem> { new FoodItem { Name = chosenOption, Quantity = Constants.testFoodItem.Quantity, OrderedTime = DateTime.Now, Price = Constants.testFoodItem.Price, Status = FoodStatus.Ordered } } };
+
+            foreach (FoodItem foodItem in order.orders.ToList())
+            {
+                SelectedTable.Order[0].orders.Add(foodItem);
+                AddToTotal(foodItem);
+            }
+            await PlayNewOrderSound();
+        }
     }
     async Task PlayNewOrderSound()
     {
         var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("NewOrderAlert.m4a"));
         player.Play();        
     }
-    bool sent (FoodItem f){ 
-        return f.Status == FoodStatus.Sent; 
-    }
+    bool sent (FoodItem f){ return f.Status == FoodStatus.Sent; }
     async void UpdateOrder(FoodItem foodItem)
     {
         foodItem.Status = FoodStatus.Sent;
         var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("OrderReady.mp3"));
         player.Play();
+        SubtractFromTotal(foodItem);
+        //await Task.Delay(1000);
+        await LoadOrders();
     }
 
 

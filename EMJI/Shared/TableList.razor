@@ -1,13 +1,14 @@
-﻿@using EMJI.Models;
-<div class="job-status">
+﻿@using EMJI.Models
+@using EMJI.Models.Sortable
+<div class="table-status">
     <h3>@ListStatus (@Tables.Count())</h3>
     <ul 
         class="dropzone @dropClass"
         ondragover="event.preventDefault();"
         ondragstart="event.dataTransfer.setData('', event.target.id);"
-        @ondrop="HandleDrop"
-        @ondragenter="HandleDragEnter"
-        @ondragleave="HandleDragLeave">
+        ondrop="HandleDrop"
+        ondragenter="HandleDragEnter"
+        ondragleave="HandleDragLeave">
         @foreach (var table in Tables)
         {
             <TableDraggable Table="table" />
@@ -29,15 +30,16 @@
         get;
         set;
     }
-    List < Table > Tables = new List < Table > ();
+    List<SortableTable> Tables = new List<SortableTable>();
     string dropClass = "";
     protected override void OnParametersSet() {
         Tables.Clear();
-        Tables.AddRange(Container.Tables.Where(x => x.Status == ListStatus));
+        Tables.AddRange(Container.Tables.Where(x => x.table.Status == ListStatus));
     }
     private void HandleDragEnter() {
-        if (ListStatus == Container.Payload.Status) return;
-        if (AllowedStatuses != null && !AllowedStatuses.Contains(Container.Payload.Status)) {
+        if (ListStatus == Container.Payload.table.Status) return;
+        if (AllowedStatuses != null && !AllowedStatuses.Contains(Container.Payload.table.Status))
+        {
             dropClass = "no-drop";
         } else {
             dropClass = "can-drop";
@@ -48,7 +50,7 @@
     }
     private async Task HandleDrop() {
         dropClass = "";
-        if (AllowedStatuses != null && !AllowedStatuses.Contains(Container.Payload.Status)) return;
+        if (AllowedStatuses != null && !AllowedStatuses.Contains(Container.Payload.table.Status)) return;
         await Container.UpdateTableAsync(ListStatus);
     }
 }

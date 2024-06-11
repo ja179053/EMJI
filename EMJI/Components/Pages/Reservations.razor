@@ -1,5 +1,7 @@
 ﻿@using EMJI.Components.Classes
+@using EMJI.Components.Forms
 @using EMJI.Models
+@using EMJI.Models.Sortable
 @using Plugin.Maui.Audio
 @using SQLite
 @using System.Collections.Generic;
@@ -11,47 +13,12 @@
 <button class="btn btn-primary" @onclick="ToggleView">@Toggle</button>
 <p role="status">@Header: @ReservationsToShow.Count</p>
 
-
 <button class="btn btn-primary" @onclick="NewReservation">New Reservation</button>
 <button class="btn btn-primary" @onclick="WalkIn">Add Walk-In</button>
-<form method="post" hidden ="@hideForm" @onsubmit="Submit" @formname="/reservation-form">
-    <AntiforgeryToken />
-    <div>
-        <label>
-            Date:
-            <InputDate @bind-Value="newReservation1!.Date" />
-        </label>
+<p hidden="@hideForm">
+    <EMJI.Components.Forms.Reservations.NewReservationForm />
+</p>
 
-        <label>
-            Identifier:
-            <InputText @bind-Value="newReservation1!.ClientInfo.FirstName" />
-        </label>
-        <label>
-            Identifier:
-            <InputText @bind-Value="newReservation1!.ClientInfo.Surname" />
-        </label>
-        <label>
-            Identifier:
-            <InputText @bind-Value="newReservation1!.ClientInfo.Email" />
-        </label>
-        <label>
-            Identifier:
-            <InputText @bind-Value="newReservation1!.ClientInfo.PhoneNumber" />
-        </label>
-
-        <label>
-            Size:
-            <InputNumber @bind-Value="newReservation1!.Size" />
-        </label>
-        <label>
-            Notes:
-            <InputText @bind-Value="newReservation1!.Notes" />
-        </label>
-    </div>
-    <div>
-        <button type="submit">Submit</button>
-    </div>
-</form>
 @if (ReservationsToShow == null)
 {
     <p><em>Loading...</em></p>
@@ -118,10 +85,15 @@ else
     }
     private async void Submit()
     {
-        allReservations.Add(new SortableReservation(newReservation1));
+        AddReservation(newReservation1);
         newReservation1 = Constants.testReservation;
-        allReservations.Sort();
+    }
+    public async static Task AddReservation(Reservation newRes)
+    {
+        //also adds to the database
         //await database.AddAsync(DatabaseType.Reservations, r);
+        allReservations.Add(new SortableReservation(newRes));
+        allReservations.Sort();
         await App.Current.MainPage.DisplayAlert("Reservation Successful", "A confirmation will be sent shortly.", "OK");
         //NavigationManager.NavigateTo("reservations", true);
         var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("simple-notification-152054.mp3"));
@@ -149,7 +121,9 @@ else
         string phoneNumber = await App.Current.MainPage.DisplayPromptAsync("New Reservation", "What is the client's phone number?", keyboard: Keyboard.Numeric, maxLength: 13);
         if (phoneNumber == null)
             return;
-        /*bool hasEmail = email.Contains('@') && email.Contains('.');
+        bool canContact = await App.Current.MainPage.DisplayAlert("Permission to contact for reservation updates?", "WhatsApp messages and emails", "Yes", "No");
+        //Email and phone number verification
+    /*bool hasEmail = email.Contains('@') && email.Contains('.');
         bool hasPhone = phoneNumber.Length > 10;
         if(!hasEmail && !hasPhone)
             {
@@ -158,9 +132,9 @@ else
         }*/
         if (await App.Current.MainPage.DisplayAlert("Are these details correct?", string.Format("Reservation for {0} on {1} at {2}. Under the name of {3}. Email: {4} Phone Number {5}", size, date.ToShortDateString(), date.ToLocalTime(), fullName, email, phoneNumber), "Yes", "No"))
         {
-            string firstName = fullName;
             string lastName = fullName;
-            Client client = new Client { FirstName = firstName, Surname = lastName, PhoneNumber = phoneNumber, Email = email };
+            string firstName = NameSplitter(fullName, out lastName);
+            Client client = new Client { FirstName = firstName, Surname = lastName, PhoneNumber = phoneNumber, Email = email, CanContact = canContact };
             Reservation r = new Reservation { ClientInfo = client, Date = date, Size = size, Notes = notes };
             allReservations.Add(new SortableReservation(r));
             allReservations.Sort();
@@ -171,27 +145,17 @@ else
             NavigationManager.NavigateTo("reservations", true);
         }
     }
-    public class SortableReservation : IEquatable<SortableReservation>, IComparable<SortableReservation>
+    string NameSplitter(string fullName, out string forname)
     {
-        public SortableReservation(Reservation r)
+        forname = "";
+        string surname = fullName;
+        if (fullName.Contains(' '))
         {
-            reservation = r;
+            int i = fullName.IndexOf(' ');
+            forname = fullName.Substring(0, i);
+            surname = fullName.Substring(i + 1, fullName.Length - i - 1);
         }
-        public Reservation reservation;
-        public int CompareTo(SortableReservation comparePart)
-        {
-            // A null value means that this object is greater.
-            if (comparePart == null)
-                return 1;
-
-            else
-                return this.reservation.Date.CompareTo(comparePart.reservation.Date);
-        }
-        public bool Equals(SortableReservation other)
-        {
-            if (other == null) return false;
-            return (this.reservation.Date.Equals(other.reservation.Date));
-        }
+        return surname;
     }
 }
 

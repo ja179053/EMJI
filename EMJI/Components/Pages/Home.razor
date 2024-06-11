@@ -19,9 +19,11 @@
 <label>Clients should be able to make a reservation from here!</label>
 <label>Staff should be able to see upcoming data here</label>
 <label>Admin should be able to see past data here analytics</label>
+<br />
+<label style="font-style:oblique">Catalogue</label>
 
 <table class="table" title="Catalog">
-    <thead>
+    <thead title="Catalog">
         <tr>
             <th>Name</th>
             <th>Price</th>
@@ -187,6 +189,7 @@
             Constants.orders = new List<Models.Order>();
             foreach (var v in result.Orders)
             {
+                //Needs an update function to change the names of orders to match menu names
                 Models.Order order = new Models.Order();
                 order.orders = new List<FoodItem>();
                 order.orders.Add(new FoodItem

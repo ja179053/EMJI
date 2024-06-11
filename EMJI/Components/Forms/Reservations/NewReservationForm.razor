@@ -1,0 +1,51 @@
+﻿<!--page "/newReservationForm"-->
+@using EMJI.Models
+@using EMJI.Components.Classes
+@using static EMJI.Components.Pages.Reservations
+
+<h3>NewReservationForm</h3>
+<form method="post" @onsubmit="Submit" @formname="/new-reservation-form">
+    <AntiforgeryToken />
+    <div>
+        <label>
+            Date:
+            <InputDate @bind-Value="newReservation1!.Date" />
+        </label>
+
+        <label>
+            Forname:
+            <InputText @bind-Value="newReservation1!.ClientInfo.FirstName" />
+        </label>
+        <label>
+            Surname:
+            <InputText @bind-Value="newReservation1!.ClientInfo.Surname" />
+        </label>
+        <label>
+            Email:
+            <InputText @bind-Value="newReservation1!.ClientInfo.Email" />
+        </label>
+        <label>
+            Phone Number:
+            <InputText @bind-Value="newReservation1!.ClientInfo.PhoneNumber" />
+        </label>
+
+        <label>
+            No. of People:
+            <InputNumber @bind-Value="newReservation1!.Size" />
+        </label>
+        <label>
+            Notes:
+            <InputText @bind-Value="newReservation1!.Notes" />
+        </label>
+    </div>
+    <div>
+        <button type="submit">Submit</button>
+    </div>
+</form>
+@code {
+    Reservation newReservation1 = Constants.newReservation;
+    private async void Submit()
+    {
+        await AddReservation(newReservation1);
+    }
+}

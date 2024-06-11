@@ -1,7 +1,7 @@
-﻿@using EMJI.Models;
-<li class="draggable" draggable="true" title="@Table.Name" @ondragstart="@(() => HandleDragStart(Table))">
-    <p class="description">@Table.Name</p>
-    <p class="last-updated"><small>Last Updated</small> @Table.LastUpdated.ToString("HH:mm.ss tt")</p>
+﻿@using EMJI.Models.Sortable
+<li class="draggable" draggable="true" title="@Table.table.Name" @ondragstart="@(() => HandleDragStart(Table))">
+    <p class="description">@Table.table.Name</p>
+    <p class="last-updated"><small>Last Updated</small> @Table.table.LastUpdated.ToString("HH:mm.ss tt")</p>
     <img src="emjilogo.png" draggable="true" ondragstart="drag(event)" id="drag1" width="88" height="31">
 </li>
 @code {
@@ -12,12 +12,12 @@
         set;
     }
     [Parameter]
-    public Table Table
+    public SortableTable Table
     {
         get;
         set;
     }
-    private void HandleDragStart(Table selectedTable)
+    private void HandleDragStart(SortableTable selectedTable)
     {
         Container.Payload = selectedTable;
     }

@@ -1,4 +1,5 @@
-﻿@using EMJI.Models;
+﻿@using EMJI.Models
+@using EMJI.Models.Sortable
 <div class="tables-container">
     <CascadingValue Value="this">
         @ChildContent
@@ -6,7 +7,7 @@
 </div>
 @code {
     [Parameter]
-    public List<Table> Tables
+    public List<SortableTable> Tables
     {
         get;
         set;
@@ -23,19 +24,19 @@
         get;
         set;
     }
-    public Table Payload
+    public SortableTable Payload
     {
         get;
         set;
     }
     public async Task UpdateTableAsync(TableStatus newStatus)
     {
-        var task = Tables.SingleOrDefault(x => x.Id == Payload.Id);
+        var task = Tables.SingleOrDefault(x => x.table.Id == Payload.table.Id);
         if (task != null)
         {
-            task.Status = newStatus;
-            task.LastUpdated = DateTime.Now;
-            await OnStatusUpdated.InvokeAsync(Payload);
+            task.table.Status = newStatus;
+            task.table.LastUpdated = DateTime.Now;
+            await OnStatusUpdated.InvokeAsync(Payload.table);
         }
     }
 }
