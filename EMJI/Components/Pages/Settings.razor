@@ -1,0 +1,11 @@
+﻿@page "/settings"
+<h3>Settings</h3>
+@code {
+    public static bool OccurWeekly = true, allowUnassignedReservations = true;
+    public static TimeOnly openTime = new TimeOnly(17, 0), lastEntryTime = new TimeOnly(1, 30);
+    public static TimeSpan tableUseDuration = new TimeSpan(2, 0, 0);
+    void Start()
+    {
+        
+    }
+}

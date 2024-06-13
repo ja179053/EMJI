@@ -38,7 +38,7 @@ else
             @foreach (var reservation in ReservationsToShow)
             {
                 <tr>
-                    <td>@reservation.reservation.Date.ToShortDateString()</td>
+                    <td>@reservation.reservation.Date.ToLongDateString()</td>
                     <td>@reservation.reservation.Size</td>
                     <td>@reservation.reservation.ClientInfo.FullName </td>
                     <td>@reservation.reservation.Notes</td>
@@ -63,9 +63,14 @@ else
     {
         database = new Database();
         try
-        {//Reservations either aren't being saved or aren't being loaded. I believe they're not being loaded, but i can't find the save file.
+        {
+            allReservations.Clear();
+            //Reservations either aren't being saved or aren't being loaded. I believe they're not being loaded, but i can't find the save file.
             List<Reservation> res = new List<Reservation>();
             //res = await database.GetReservationsAsync();
+            res.Add(Constants.testReservation);
+            res[0].Date = DateTime.Today;
+            res[0].Date.AddMinutes((double)(Settings.openTime.Hour * 60) + Settings.openTime.Minute);
             foreach(Reservation r in res)
             {
                 allReservations.Add(new SortableReservation(r));
@@ -90,14 +95,20 @@ else
     }
     public async static Task AddReservation(Reservation newRes)
     {
-        //also adds to the database
-        //await database.AddAsync(DatabaseType.Reservations, r);
-        allReservations.Add(new SortableReservation(newRes));
-        allReservations.Sort();
-        await App.Current.MainPage.DisplayAlert("Reservation Successful", "A confirmation will be sent shortly.", "OK");
-        //NavigationManager.NavigateTo("reservations", true);
-        var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("simple-notification-152054.mp3"));
-        player.Play();
+        if (Settings.allowUnassignedReservations && Floorplan.Tables != null && Floorplan.Tables.Where((f) => f.Reservation == null || (f.Reservation.Date.TimeOfDay - newRes.Date.TimeOfDay) >= Settings.tableUseDuration).Count() > 0)
+        {
+            //also adds to the database
+            //await database.AddAsync(DatabaseType.Reservations, r);
+            allReservations.Add(new SortableReservation(newRes));
+            allReservations.Sort();
+            await App.Current.MainPage.DisplayAlert("Reservation Successful", "A confirmation will be sent shortly.", "OK");
+            //NavigationManager.NavigateTo("reservations", true);
+            var player = AudioManager.Current.CreatePlayer(await FileSystem.OpenAppPackageFileAsync("simple-notification-152054.mp3"));
+            player.Play();
+        } else
+        {
+            await App.Current.MainPage.DisplayAlert("No tables available", "Please either change your settings to allow unassigned tables, or add more tables to your floorplan.", "OK");            
+        }
     }
     private async void WalkIn()
     {

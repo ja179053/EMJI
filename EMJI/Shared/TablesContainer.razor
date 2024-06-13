@@ -7,7 +7,7 @@
 </div>
 @code {
     [Parameter]
-    public List<SortableTable> Tables
+    public List<Table> Tables
     {
         get;
         set;
@@ -24,19 +24,19 @@
         get;
         set;
     }
-    public SortableTable Payload
+    public Table Payload
     {
         get;
         set;
     }
     public async Task UpdateTableAsync(TableStatus newStatus)
     {
-        var task = Tables.SingleOrDefault(x => x.table.Id == Payload.table.Id);
+        var task = Tables.SingleOrDefault(x => x.Id == Payload.Id);
         if (task != null)
         {
-            task.table.Status = newStatus;
-            task.table.LastUpdated = DateTime.Now;
-            await OnStatusUpdated.InvokeAsync(Payload.table);
+            task.Status = newStatus;
+            task.LastUpdated = DateTime.Now;
+            await OnStatusUpdated.InvokeAsync(Payload);
         }
     }
 }

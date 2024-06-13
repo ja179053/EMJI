@@ -34,6 +34,20 @@ namespace EMJI.Components.Classes
 
         public static FoodItem testFoodItem = new FoodItem { Name = "Bread", Price = 3.00M, Quantity=1, Status = FoodStatus.Ordered };
         public static Order testOrder { get => new Order { orders = new List<FoodItem> { testFoodItem } }; }
+        /// <summary>
+        /// The maximum number of minutes a customer should have to wait for their order
+        /// </summary>
+        public static int MaxWaitTime = 15;
+
         public static Table testTable = new Table { Name = "Table 1", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = new List<Order> { testOrder}, Reservation = testReservation, LastUpdated = DateTime.Now };
+
+        public static Color Green = new Color(0, 255, 0);
+        public static Color Red = new Color(255, 0, 0);
+        public static Color Blue = new Color(0, 0, 255);
+        public static Color White = new Color(255, 255, 255);
+        public static Color Purple = new Color(255, 0, 255);
+        public static Color Yellow = new Color(255, 255, 0);
+        public static Color Cyan = new Color(0, 255, 255);
+        public static Color LightGreen = new Color(0, 255, 125);
     }
 }

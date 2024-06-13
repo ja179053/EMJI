@@ -1,119 +1,194 @@
 ﻿@page "/floorplan"
-<h3>Floorplan</h3>
+@inject IJSRuntime jsRuntime
+@inject NavigationManager NavigationManager
+@using EMJI.Components.Pages.Tables
+@using EMJI.Components.Classes
 @using EMJI.Models
-@using EMJI.Shared
-@using static EMJI.Components.Pages.Reservations
+@using EMJI.Models.Sortable
+<!DOCTYPE html>
+<html>
+
 <style>
-    #div1, #div2, #div3 {
-        float: left;
-        width: 100px;
-        height: 35px;
-        margin: 10px;
-        padding: 10px;
-        border: 1px solid black;
-        
+    #mydiv {
+        position: absolute;
+        z-index: 9;
+        text-align: center;
+        border: 1px solid #d3d3d3;
+        height: 60px;
+        width 50px;
+        max-width: 100px;
+        max-height: 100px;
+        cursor: move;
     }
-    #tr1{
-        background: blue;
-        border: 5px solid black;
+
+    #mydivheader {
+        padding: 10px;
+        cursor: move;
+        z-index: 10;
+    }
+
+    .page {
+        overflow: hidden;
     }
 </style>
-<label>These are today's clients</label
-    <button title="<" @onclick="@(() => ChangeDate(@"-1"))"></button>
-<InputDate @bind-Value=date />
-    <button title=">" @onclick="@(() => ChangeDate(@"1"))"></button>
-<table class="table">
-    <thead>
-        <tr hidden={@todaysReservations.Count == 0}>
-            <th>Date</th>
-            <th>Size</th>
-            <th>Name</th>
-            <th>Notes</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var reservation in todaysReservations)
-        {
-            <tr id="tr1" draggable="true" ondrag="@DragEvent">
-                <td>@reservation.reservation.Date.ToShortDateString()</td>
-                <td>@reservation.reservation.Size</td>
-                <td>@reservation.reservation.ClientInfo.FullName </td>
-                <td>@reservation.reservation.Notes</td>
-            </tr>
-        }
-    </tbody>
-</table>
-<label>Tables should be on the right</label>
-<label>This is your floorplan</label>
-<InputSelect @bind-Value="selectedTable">
-    @foreach (var value in Tables)
+<body>
+    <TodaysReservationsTable />
+    <button onclick="@AddTable">Add Table</button>
+    <p id="currentDiv" hidden="true">@ClickedTable</p>
+    @foreach (var table in Tables)
     {
-        <option>@value.Name</option>
+        <div id="mydiv" class="@table.Id" style="background-color:@TableColor(table.Status); @table.Position" @onclick="@(e => OnClick(e, table))" ondragover="@Assign">
+            <label>@table.Status</label>
+            <div id="mydivheader" class="@table.Id header" ondragstart="@(() => SetSelectedTable(@table.Id.ToString()))">
+                <label>@table.Name @table.Id</label>
+                <img src="emjilogo.png" height="50px" width="50px" />
+            </div>
+        </div>
+
     }
-</InputSelect>
+    <script>
+        var a = document.getElementById("currentDiv");
 
+        dragElement(document.getElementsByClassName(a.innerHTML)[0]);
 
+        function dragElement(elmnt) {
+            var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            if (document.getElementsByClassName(elmnt.className + " header")[0]) {
+                /* if present, the header is where you move the DIV from:*/
+                document.getElementsByClassName(elmnt.className + " header")[0].onmousedown = dragMouseDown;
+            } else {
+                /* otherwise, move the DIV from anywhere inside the DIV:*/
+                elmnt.onmousedown = dragMouseDown;
+            }
 
-<TablesContainer Tables="Tables" OnStatusUpdated="HandleStatusUpdated">
-    
-    </TablesContainer>
-@foreach (var task in Tables)
-{
-    <p>@task.Name - <strong>@task.Status</strong></p>
-}
-    
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                // get the mouse cursor position at startup:
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                // call a function whenever the cursor moves:
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                // calculate the new cursor position:
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                // set the element's new position:
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                /* stop moving when mouse button is released:*/
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+    </script>
+
+</body>
+</html>
 @code {
-        bool hideRes
+    static string ClickedTable = "0";
+    public static List<Table> Tables = new List<Table>();
+    protected void SetSelectedTable(string tableID)
     {
-            get => @todaysReservations.Count == 0;
+        if (ClickedTable != tableID)
+        {
+            ClickedTable = tableID;
+            NavigationManager.NavigateTo("floorplan", true);
         }
-    public string DragState = "waiting...";
-    DateTime date = DateTime.Today;
-    SortableReservation selectedReservation;
-    Table selectedTable;
-    List<SortableReservation> todaysReservations { get => Reservations.allReservations.Where(r => r.reservation.Date.ToShortDateString() == date.ToShortDateString()).ToList();}
-
-    List < Table > Tables = new List < Table > ();
-
-    protected override void OnInitialized() {
-        Tables.Add(new Table {
-            Id = 1, Name = " Table 1", Status = TableStatus.Unassigned, LastUpdated = DateTime.Now
-        });
-                Tables.Add(new Table { Name = "Table 2", Id = 1, Notes = "Gluten Allergy", Status = TableStatus.Seated, Order = (Tables[0].Order), Reservation = Tables[0].Reservation, LastUpdated = DateTime.Now });
     }
-    protected async void ClickedEvent() {
-        // await App.Current.MainPage.DisplayAlert("Click Successful", "", "OK");
-    }
-    protected async void DragEvent(object sender, DragEventArgs e)
+    void Assign(Table table)
     {
-        //e.dataTransfer.setData("text", ev.target.id);
-        DragState = "dragging "
-        + sender.ToString()
-        //+ e.DataTransfer.ToString()
-        ;
+        if (table != null && TodaysReservationsTable.selectedReservation != null)
+        {
+            table.CurrentReservation = TodaysReservationsTable.selectedReservation.reservation;
+            TodaysReservationsTable.selectedReservation.reservation.Table = table;
+        }
     }
-    protected async void DragOver(DragEventArgs e)
+    void AddTable()
     {
-        DragState = "dragged over";
-        e.DataTransfer.DropEffect = "move";
-        //e.preventDefault();
+        Table table = new Table { Order = new List<Order>(), Name = "Table " + (Tables.Count + 1), Id = Tables.Count };
+        Tables.Add(table);
+        SetSelectedTable(table.Id.ToString());
+        //For some reason 2nd table isn't movable
+        if (Tables.Count == 1)
+            NavigationManager.NavigateTo("floorplan", true);
     }
-    protected async void DropEvent(DragEventArgs e)
+    void SetPos(Table table, MouseEventArgs mouseEventArgs)
     {
-        /*
-        e.preventDefault();
-        var data = e.dataTransfer.getData("text");
-        e.target.appendChild(document.getElementById(data));*/
-        DragState = "dropped " + e.Type;
-
+        table.XPos = mouseEventArgs.ClientX - 32;
+        table.YPos = mouseEventArgs.ClientY - 70;
     }
-    void HandleStatusUpdated(Table updatedTable)
+    async void OnClick(MouseEventArgs mouseEventArgs, Table table)
     {
-        updatedTable.LastUpdated = DateTime.Now;
+        double x = mouseEventArgs.ClientX - table.XPos;
+        double y = mouseEventArgs.ClientY - table.YPos;
+        if (x > 90 || y > 90)
+            SetPos(table, mouseEventArgs);
+        List<SortableReservation> todaysReservations = new List<SortableReservation>(TodaysReservationsTable.todaysReservations.Where(r => r.reservation.Size <= table.Seats));
+        int possilbleAssignments = todaysReservations.Count;
+        if (table.Reservation != null && await App.Current.MainPage.DisplayAlert("Table is " + table.Status, "Would you like to update the table to " + table.NextStatus, "Yes", "No"))
+        {
+            table.Status = table.NextStatus;
+            NavigationManager.NavigateTo("floorplan", true);
+        }
+        else if (table.Status == TableStatus.Unassigned && todaysReservations.Count > 0)
+        {
+            List<string> names = new List<string>();
+            foreach (SortableReservation reservation in TodaysReservationsTable.todaysReservations.Where(r => r.reservation.Table == null && r.reservation.Size <= table.Seats))
+                names.Add(reservation.reservation.ClientInfo.FullName + " ," + reservation.reservation.ClientInfo.Notes);
+            if (await App.Current.MainPage.DisplayAlert("Would you like to assign a reservation to this table?", todaysReservations.Count + " tables can be assigned today.", "Yes", "No"))
+            {
+                string s = await App.Current.MainPage.DisplayActionSheet("Who To Sit?", "Cancel", "", names.ToArray());
+                Reservation reservation = ((SortableReservation)todaysReservations.Find(r => r.reservation.ClientInfo.FullName == s.Substring(0, s.IndexOf(',')).Trim())).reservation;
+                reservation.Table = table;
+                table.Reservation = reservation;
+                table.Status = TableStatus.Assigned;
+                NavigationManager.NavigateTo("floorplan", true);
+            }
+        }
     }
-    async void ChangeDate(string i)
+    string TableColor(TableStatus t)
     {
-        date = date.AddDays(int.Parse(i));
-      //   await App.Current.MainPage.DisplayAlert("Date Changed", date.ToShortDateString(), "OK");
+        Color color = Constants.Red;
+        switch (t)
+        {
+            case TableStatus.Unassigned:
+                color = Constants.White;
+                break;
+            case TableStatus.Assigned:
+                color = Constants.LightGreen;
+                break;
+            case TableStatus.Ready:
+                color = Constants.Green;
+                break;
+            case TableStatus.Seated:
+                color = Constants.Purple;
+                break;
+            case TableStatus.Starters:
+                color = Constants.Blue;
+                break;
+            case TableStatus.Mains:
+                color = Constants.Cyan;
+                break;
+            case TableStatus.Desserts:
+                color = Constants.Yellow;
+                break;
+            case TableStatus.Dirty:
+                color = Constants.Red;
+                break;
+        }
+        string s = color.ToHex();
+        return color.ToHex();
     }
 }

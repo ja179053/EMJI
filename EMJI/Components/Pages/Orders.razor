@@ -69,15 +69,16 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody style="background-color:darkgray">
                 @foreach (var table in Tables)
             {
-                <tr>
+                <tr style="background-color:@table.OrderFulfilledColorText">
                     <td>@table.Name</td>
                     <tc hidden=@table.Collapsed>
                         <td>@table.LastUpdated.ToShortTimeString()</td>
-                    <td>@table.Reservation.Notes</td>
-                </tc>
+                        <td>@table.Reservation.Notes</td>
+                        <td>@table.OrderFulFilledText</td>
+                    </tc>
                 <button @onclick="() => table.Collapsed = !table.Collapsed">Collapse</button>
                 </tr>
                     @foreach (var order in table.Order)
@@ -86,7 +87,7 @@
                             {
                             <tr hidden="@table.Collapsed">
                                 <td>@foodItem.Name</td>
-                                <td>@foodItem.OrderedTime.ToShortTimeString()</td>
+                                <td style="background-color:@foodItem.OverdueColor">@foodItem.OrderedTime.ToShortTimeString()</td>
                                 <td>@foodItem.Quantity</td>
                                 <td>@foodItem.Status</td>
                                 <button class="button-table" @onclick="() => UpdateOrder(foodItem)">Update Order</button>
@@ -132,10 +133,6 @@
     }
     Table selectedTable2;
     Order selectedOrder;
-    bool Multiple(int i)
-    {
-        return i > 1;
-    }
     async void Send(string s)
     {
         ///Let's think this out thoroughly, shall we?
@@ -218,8 +215,8 @@
             foreach(FoodItem foodItem in foodItems){
                 foodItem.Status = FoodStatus.Sent;
                 SubtractFromTotal(foodItem);
-            }
-            */
+        }
+        */
         }
     }
     void AddToTotal(FoodItem foodItem)
@@ -258,6 +255,10 @@
         }
     }
     #endregion
+    bool Multiple(int i)
+    {
+        return i > 1;
+    }
     string SelectedTableName { get => (SelectedTable == null) ? "" : SelectedTable.Name; set => selectedTable = Tables.Find(obj => obj.Name == value); }
     static bool hideClosed = true;
     string hideClosedText { get => (hideClosed) ? "Show Closed" : "Hide Closed"; }
@@ -303,13 +304,11 @@
     }
     async void NewOrder()
     {
-        string[] options = null;
         List<string> optionsList = new List<string>();
         foreach (FoodItem foodItem in Constants.menu)
             optionsList.Add(foodItem.Name);
-        options = optionsList.ToArray();
         //Update this so choosing a string adds, and choosing destruct sends the action.
-        string chosenOption = await App.Current.MainPage.DisplayActionSheet("What to order?", "Cancel", "", options);
+        string chosenOption = await App.Current.MainPage.DisplayActionSheet("What to order?", "Cancel", "", optionsList.ToArray());
         if (!string.IsNullOrEmpty(chosenOption))
         {
             //After selecting a table, select a food item from the menu. Repeat until order is complete.

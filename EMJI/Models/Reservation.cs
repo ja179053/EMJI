@@ -6,5 +6,6 @@
         public Client ClientInfo { get; set; }
         public int Size { get; set; }
         public string? Notes { get; set; }
+        public Table Table { get; set; }
     }
 }

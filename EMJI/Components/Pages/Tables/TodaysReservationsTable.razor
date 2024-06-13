@@ -1,0 +1,35 @@
+﻿@using EMJI.Models.Sortable
+<h3>Today's Reservations</h3>
+<table class="table">
+    <thead>
+        <tr hidden={ @todaysReservations.Count= =0 }>
+            <th>Date</th>
+            <th>Size</th>
+            <th>Name</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var reservation in todaysReservations)
+        {
+            <tr draggable="true" title="@reservation.ID" style="background-color:aquamarine" ondragstart="Assign(reservation)">
+                <td>@reservation.reservation.Date.ToShortTimeString()</td>
+                <td>@reservation.reservation.Size</td>
+                <td>@reservation.reservation.ClientInfo.FullName </td>
+                <td>@reservation.reservation.Notes</td>
+            </tr>
+        }
+    </tbody>
+</table>
+@code {
+    public static List<SortableReservation> todaysReservations { get => Reservations.allReservations.Where(r => r.reservation.Date.ToShortDateString() == DateTime.Today.ToShortDateString()).ToList(); }
+    bool hideRes
+    {
+        get => @todaysReservations.Count == 0;
+    }
+    public static SortableReservation selectedReservation{ get; set; }
+    void Assign(SortableReservation sortableReservation)
+    {
+        selectedReservation = sortableReservation;
+    }
+}

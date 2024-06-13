@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EMJI.Components.Classes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +14,8 @@ namespace EMJI.Models
         public FoodStatus Status { get; set; }
         public int Quantity { get; set; }
         public DateTime OrderedTime { get; set; }
+        public bool Overdue { get => (DateTime.Now - OrderedTime).Minutes > Constants.MaxWaitTime; }
+        public string OverdueColor { get => ((Overdue) ? Constants.Red : Constants.Green).ToHex(); }
     }
     public enum FoodStatus
     {

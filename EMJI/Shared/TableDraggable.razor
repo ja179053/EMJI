@@ -1,24 +1,16 @@
-﻿@using EMJI.Models.Sortable
-<li class="draggable" draggable="true" title="@Table.table.Name" @ondragstart="@(() => HandleDragStart(Table))">
-    <p class="description">@Table.table.Name</p>
-    <p class="last-updated"><small>Last Updated</small> @Table.table.LastUpdated.ToString("HH:mm.ss tt")</p>
-    <img src="emjilogo.png" draggable="true" ondragstart="drag(event)" id="drag1" width="88" height="31">
+﻿@using EMJI.Models
+<li class="draggable" draggable="true" title="@Table.Name" @ondragstart="@(() => HandleDragStart(Table))">
+    <p class="description">@Table.Name</p>
+    <p class="last-updated"><small>Last Updated</small> @Table.LastUpdated.ToString("HH:mm.ss tt")</p>
+    <img src="emjilogo.png" draggable="true" ondragstart="@HandleDragStart" id="drag1" width="30" height="30" />
 </li>
+
 @code {
-    [CascadingParameter]
-    TablesContainer Container
+    [CascadingParameter] TablesContainer Container { get; set; }
+    [Parameter] public Table Table { get; set; }
+
+    private void HandleDragStart(Table selectedJob)
     {
-        get;
-        set;
-    }
-    [Parameter]
-    public SortableTable Table
-    {
-        get;
-        set;
-    }
-    private void HandleDragStart(SortableTable selectedTable)
-    {
-        Container.Payload = selectedTable;
+        Container.Payload = selectedJob;
     }
 }

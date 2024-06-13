@@ -58,7 +58,16 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Compile Remove="Components\Pages\DashboardView.xaml.cs" />
+      <Compile Remove="Components\Pages\DashboardViewModel.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Remove="wwwroot\Images\emjilogo.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <MauiXaml Remove="Components\Pages\DashboardView.xaml" />
     </ItemGroup>
 
     <ItemGroup>
